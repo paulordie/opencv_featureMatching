@@ -1,6 +1,6 @@
 #include <iostream>
 #include "opencv2/core.hpp"
-#ifdef HAVE_OPENCV_XFEATURES2D
+//#ifdef HAVE_OPENCV_XFEATURES2D
 #include "opencv2/calib3d.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
@@ -18,34 +18,39 @@ const char* keys =
         "{ input2 | box_in_scene.png | Path to input image 2. }";
 int main( int argc, char* argv[] )
 {
-
-    //    cv::Rect roiDtu(11,179,280,160);
-    cv::Rect roiDtu(60,260,745,415);
-//    cv::Rect roiDtu_bench(343,179,280,160);
-    cv::Rect roiDtu_bench(1100,260,730,415);
+    cv::Rect roiDtu(39,199,220,110);
+    //cv::Rect roiDtu(60,260,745,415);
+    cv::Rect roiDtu_bench(309,179,280,160);
+    //cv::Rect roiDtu_bench(1100,260,730,415);
 
     //CommandLineParser parser( argc, argv, keys );
     // Mat img_object = imread( samples::findFile( parser.get<String>("input1") ), IMREAD_GRAYSCALE );
     // Mat img_scene = imread( samples::findFile( parser.get<String>("input2") ), IMREAD_GRAYSCALE );
-    Mat img_object = imread("/home/pcorrea/Documents/projetos/TPV-OrionPax/featureMatching/saved1.jpg");
-    Mat img_scene = imread("/home/pcorrea/Documents/projetos/TPV-OrionPax/featureMatching/saved.jpg");
+
+    Mat img_object = imread("/home/pcorrea/Documents/projetos/TPV-OrionPax/featureMatching/515.14_15_30_10_2020_15_14_07.jpg"); //BLUE
+    Mat img_scene = imread("/home/pcorrea/Documents/projetos/TPV-OrionPax/featureMatching/515.14_15_30_10_2020_15_14_07.jpg");
+
+
+
     if ( img_object.empty() || img_scene.empty() )
     {
         cout << "Could not open or find the image!\n" << endl;
         //parser.printMessage();
         return -1;
     }
+    cv::Mat img_object_cropped = img_object(roiDtu);
+    cv::Mat img_scene_cropped = img_scene(roiDtu_bench);
     //-- Step 1: Detect the keypoints using SURF Detector, compute the descriptors
     int minHessian = 400;
     Ptr<SURF> detector = SURF::create( minHessian );
     std::vector<KeyPoint> keypoints_object, keypoints_scene;
     Mat descriptors_object, descriptors_scene;
-    detector->detectAndCompute( img_object, noArray(), keypoints_object, descriptors_object );
-    detector->detectAndCompute( img_scene, noArray(), keypoints_scene, descriptors_scene );
+    detector->detectAndCompute( img_object_cropped, noArray(), keypoints_object, descriptors_object );
+    detector->detectAndCompute( img_scene_cropped, noArray(), keypoints_scene, descriptors_scene );
     //-- Step 2: Matching descriptor vectors with a FLANN based matcher
     // Since SURF is a floating-point descriptor NORM_L2 is used
 //    Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
-    Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE_SL2);
+    Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
     std::vector< std::vector<DMatch> > knn_matches;
     matcher->knnMatch( descriptors_object, descriptors_scene, knn_matches, 2 );
     //-- Filter matches using the Lowe's ratio test
@@ -60,7 +65,7 @@ int main( int argc, char* argv[] )
     }
     //-- Draw matches
     Mat img_matches;
-    drawMatches( img_object, keypoints_object, img_scene, keypoints_scene, good_matches, img_matches, Scalar::all(-1),
+    drawMatches( img_object_cropped, keypoints_object, img_scene_cropped, keypoints_scene, good_matches, img_matches, Scalar::all(-1),
                  Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
     //-- Localize the object
     std::vector<Point2f> obj(4);
@@ -76,23 +81,23 @@ int main( int argc, char* argv[] )
     //-- Get the corners from the image_1 ( the object to be "detected" )
     std::vector<Point2f> obj_corners(4);
     obj_corners[0] = Point2f(0, 0);
-    obj_corners[1] = Point2f( (float)img_object.cols, 0 );
-    obj_corners[2] = Point2f( (float)img_object.cols, (float)img_object.rows );
-    obj_corners[3] = Point2f( 0, (float)img_object.rows );
+    obj_corners[1] = Point2f( (float)img_object_cropped.cols, 0 );
+    obj_corners[2] = Point2f( (float)img_object_cropped.cols, (float)img_object_cropped.rows );
+    obj_corners[3] = Point2f( 0, (float)img_object_cropped.rows );
     std::vector<Point2f> scene_corners(4);
 
     if (!H.empty()) {
 
         perspectiveTransform( obj_corners, scene_corners, H);
         //-- Draw lines between the corners (the mapped object in the scene - image_2 )
-        line( img_matches, scene_corners[0] + Point2f((float)img_object.cols, 0),
-              scene_corners[1] + Point2f((float)img_object.cols, 0), Scalar(0, 255, 255), 4 );
-        line( img_matches, scene_corners[1] + Point2f((float)img_object.cols, 0),
-              scene_corners[2] + Point2f((float)img_object.cols, 0), Scalar( 0, 255, 0), 4 );
-        line( img_matches, scene_corners[2] + Point2f((float)img_object.cols, 0),
-              scene_corners[3] + Point2f((float)img_object.cols, 0), Scalar( 255, 255, 0), 4 );
-        line( img_matches, scene_corners[3] + Point2f((float)img_object.cols, 0),
-              scene_corners[0] + Point2f((float)img_object.cols, 0), Scalar( 0, 255, 0), 4 );
+        line( img_matches, scene_corners[0] + Point2f((float)img_object_cropped.cols, 0),
+              scene_corners[1] + Point2f((float)img_object_cropped.cols, 0), Scalar(0, 255, 255), 4 );
+        line( img_matches, scene_corners[1] + Point2f((float)img_object_cropped.cols, 0),
+              scene_corners[2] + Point2f((float)img_object_cropped.cols, 0), Scalar( 0, 255, 0), 4 );
+        line( img_matches, scene_corners[2] + Point2f((float)img_object_cropped.cols, 0),
+              scene_corners[3] + Point2f((float)img_object_cropped.cols, 0), Scalar( 255, 255, 0), 4 );
+        line( img_matches, scene_corners[3] + Point2f((float)img_object_cropped.cols, 0),
+              scene_corners[0] + Point2f((float)img_object_cropped.cols, 0), Scalar( 0, 255, 0), 4 );
         //-- Show detected matches
         imshow("Found Blue or Black", img_matches );
         waitKey();
@@ -103,10 +108,10 @@ int main( int argc, char* argv[] )
 
     return 0;
 }
-#else
-int main()
-{
-    std::cout << "This tutorial code needs the xfeatures2d contrib module to be run." << std::endl;
-    return 0;
-}
-#endif
+//#else
+//int main()
+//{
+//    std::cout << "This tutorial code needs the xfeatures2d contrib module to be run." << std::endl;
+//    return 0;
+//}
+//#endif
